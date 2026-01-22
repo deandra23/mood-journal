@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindfulMe | Secure Mood Journal</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <div id="auth-overlay" class="overlay">
+        <div class="auth-card">
+            <h2>Welcome Back</h2>
+            <p>Please verify your identity to access your private journal.</p>
+            <div id="login-step">
+                <input type="email" id="email" placeholder="Email Address" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button onclick="sendOTP()">Send Verification Code</button>
+            </div>
+            <div id="mfa-step" class="hidden">
+                <p>Enter the 6-digit code sent to your email.</p>
+                <input type="text" id="otp-input" placeholder="000000" maxlength="6">
+                <button onclick="verifyOTP()">Verify & Unlock</button>
+            </div>
+        </div>
+    </div>
+
+    <main id="app-content" class="blurred">
+        <nav>
+            <div class="logo">Mindful<span>Me</span></div>
+            <button class="sos-btn" onclick="triggerSOS()">I'm not okay</button>
+        </nav>
+
+        <section class="dashboard">
+            <div class="ai-container">
+                <div id="ai-character" class="float-anim">
+                    <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Buddy&backgroundColor=b6e3f4" alt="AI Buddy">
+                </div>
+                <div class="ai-bubble">
+                    <p id="ai-message">Hello! How are you feeling today?</p>
+                </div>
+            </div>
+
+            <div class="card journal-entry">
+                <h3>Daily Check-in</h3>
+                <div class="mood-selector">
+                    <button onclick="setMood('😊', 'Happy')">😊</button>
+                    <button onclick="setMood('😌', 'Calm')">😌</button>
+                    <button onclick="setMood('😐', 'Neutral')">😐</button>
+                    <button onclick="setMood('😔', 'Sad')">😔</button>
+                    <button onclick="setMood('😠', 'Angry')">😠</button>
+                </div>
+                <p>What was today's highlight?</p>
+                <textarea id="note-input" placeholder="Write your reflections here..."></textarea>
+                <button class="save-btn" onclick="saveEntry()">Save Entry</button>
+            </div>
+
+            <div class="card trends">
+                <h3>Mood Trends</h3>
+                <canvas id="moodChart"></canvas>
+            </div>
+        </section>
+
+        <div id="sos-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Breathe With Me</h2>
+                <p>Try the 5-4-3-2-1 Technique:</p>
+                <ul>
+                    <li>5 things you see</li>
+                    <li>4 things you can touch</li>
+                    <li>3 things you hear</li>
+                    <li>2 things you can smell</li>
+                    <li>1 thing you can taste</li>
+                </ul>
+                <div class="helpline">Emergency Helpline: <strong>14416</strong></div>
+                <button onclick="closeSOS()">I feel better</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
