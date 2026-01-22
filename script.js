@@ -1,83 +1,93 @@
+// 1. INITIALIZE SUPABASE
+const SUPABASE_URL = 'https://qmziungyadenrwagcbxd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_XfFbT2rOqGmFq9Ty8AjDhQ_9L_YvQXq';
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 let selectedMood = '';
-let moodData = JSON.parse(localStorage.getItem('moodLogs')) || [];
+let isPrivate = false;
 
-// MFA Mock Logic
-function sendOTP() {
+// 2. AUTHENTICATION (MFA via OTP)
+async function handleLogin() {
     const email = document.getElementById('email').value;
-    if(email) {
-        alert("Verification code sent to " + email + " (Simulated: 123456)");
-        document.getElementById('login-step').classList.add('hidden');
-        document.getElementById('mfa-step').classList.remove('hidden');
-    }
-}
-
-function verifyOTP() {
-    const otp = document.getElementById('otp-input').value;
-    if(otp === '123456') {
-        document.getElementById('auth-overlay').classList.add('hidden');
-        document.getElementById('app-content').classList.remove('blurred');
-        initChart();
-    } else {
-        alert("Invalid Code!");
-    }
-}
-
-// Mood Tracking Logic
-function setMood(emoji, label) {
-    selectedMood = emoji;
-    document.getElementById('ai-message').innerText = `I see you're feeling ${label}. Want to talk about it?`;
-}
-
-function saveEntry() {
-    const note = document.getElementById('note-input').value;
-    const entry = {
-        date: new Date().toLocaleDateString(),
-        mood: selectedMood,
-        note: note
-    };
+    const { error } = await supabase.auth.signInWithOtp({ email });
     
-    moodData.push(entry);
-    localStorage.setItem('moodLogs', JSON.stringify(moodData));
-    updateAIResponse(selectedMood);
-    initChart();
-    alert("Entry secured and saved!");
+    if (error) return alert(error.message);
+    alert("OTP sent to your email!");
+    document.getElementById('otp-input').classList.remove('hidden');
+    document.getElementById('login-btn').classList.add('hidden');
 }
 
-function updateAIResponse(mood) {
-    const messages = {
-        '😊': "That's wonderful! Keep that positive energy flowing!",
-        '😔': "I'm sorry you're feeling down. Remember, it's okay not to be okay.",
-        '😠': "Take a deep breath. You're stronger than your frustration.",
-        '😌': "Peace looks good on you. Stay mindful."
-    };
-    document.getElementById('ai-message').innerText = messages[mood] || "Thank you for sharing with me.";
+async function verifyOtp() {
+    const email = document.getElementById('email').value;
+    const token = document.getElementById('otp-code').value;
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink'});
+
+    if (error) return alert("Invalid Code");
+    checkUser();
 }
 
-// Charting
-function initChart() {
-    const ctx = document.getElementById('moodChart').getContext('2d');
-    const labels = moodData.slice(-7).map(d => d.date);
-    const data = moodData.slice(-7).map(d => d.mood === '😊' ? 5 : d.mood === '😔' ? 2 : 3);
-
-    if(window.myChart) window.myChart.destroy();
-
-    window.myChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Mood Level',
-                data: data,
-                borderColor: '#6c5ce7',
-                tension: 0.4,
-                fill: true,
-                backgroundColor: 'rgba(108, 92, 231, 0.1)'
-            }]
-        },
-        options: { scales: { y: { min: 1, max: 5 } } }
-    });
+// 3. MOOD LOGIC
+function selectMood(emoji, label) {
+    selectedMood = emoji;
+    alert(`Selected: ${label}`);
 }
 
-// SOS Logic
-function triggerSOS() { document.getElementById('sos-modal').classList.remove('hidden'); }
-function closeSOS() { document.getElementById('sos-modal').classList.add('hidden'); }
+async function saveMood() {
+    const note = document.getElementById('note').value;
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!selectedMood) return alert("Please select a mood first!");
+
+    const { error } = await supabase.from('mood_entries').insert([
+        { user_id: user.id, mood_type: selectedMood, note: note }
+    ]);
+
+    if (error) alert("Error saving data");
+    else {
+        alert("Entry secured!");
+        document.getElementById('note').value = '';
+        fetchHistory();
+    }
+}
+
+// 4. DATA RETRIEVAL
+async function fetchHistory() {
+    const { data, error } = await supabase
+        .from('mood_entries')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    const list = document.getElementById('history-list');
+    list.innerHTML = data.map(entry => `
+        <div class="bg-white/60 p-4 rounded-2xl shadow-sm border border-white">
+            <div class="flex justify-between items-center">
+                <span class="text-2xl">${entry.mood_type}</span>
+                <span class="text-xs text-gray-400">${new Date(entry.created_at).toLocaleDateString()}</span>
+            </div>
+            <p class="mt-2 text-gray-700 ${isPrivate ? 'blur-md select-none' : ''}">${entry.note || 'No notes'}</p>
+        </div>
+    `).join('');
+}
+
+// 5. UTILITIES
+function toggleSafety() {
+    document.getElementById('safety-modal').classList.toggle('hidden');
+}
+
+function togglePrivacy() {
+    isPrivate = !isPrivate;
+    document.getElementById('privacy-btn').innerText = `Hide Content: ${isPrivate ? 'ON' : 'OFF'}`;
+    fetchHistory();
+}
+
+// Initial check to see if logged in
+async function checkUser() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
+        document.getElementById('user-display').innerText = session.user.email;
+        fetchHistory();
+    }
+}
+checkUser();
